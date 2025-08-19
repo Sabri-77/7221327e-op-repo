@@ -1,0 +1,45 @@
+
+pipeline {
+    agent any
+    stages {
+        stage('Stage 1 - Checkout') {
+            steps {
+                deleteDir()
+                git credentialsId: 'Sabri-77', url: 'https://github.com/Sabri-77/722132e-op-repo.git'
+            }
+        }
+        stage('Stage 2 - Web Test QA (Before)') {
+            steps {
+                sh 'curl -Is http://localhost:33200 | head -n 1 > /tmp/qa-result-before'
+                sh 'cat /tmp/qa-result-before'
+            }
+        }
+        stage('Stage 3 - Deploy to QA') {
+            steps {
+                sh 'bolt script run 7221327e_script --targets 7221327e-qa-svr'
+            }
+        }
+        stage('Stage 4 - Verify QA') {
+            steps {
+                sh 'curl -Is http://localhost:33200 | head -n 1 > /tmp/qa-result-after'
+                sh 'cat /tmp/qa-result-after'
+            }
+        }
+        stage('Stage 5 - Deploy to PROD') {
+            steps {
+                sh 'bolt script run 7221327e_script --targets 7221327e-prod-svr'
+            }
+        }
+        stage('Stage 6 - Verify PROD') {
+            steps {
+                sh 'curl -Is http://localhost:33500 | head -n 1 > /tmp/prod-result'
+                sh 'cat /tmp/prod-result'
+            }
+        }
+        stage('Stage 7 - Complete') {
+            steps {
+                echo 'Deployment Completed'
+            }
+        }
+    }
+}
