@@ -51,11 +51,11 @@ pipeline {
                     if(proceed == 'Rollback') {
                 sh '''
                 
-                sudo docker stop 7221327e-qa-svr || true
-                sudo docker rm 7221327e-qa-svr || true
+                docker stop 7221327e-qa-svr || true
+                docker rm 7221327e-qa-svr || true
                 
                 
-                sudo docker run -d \
+                docker run -d \
                   --name 7221327e-qa-svr \
                   --hostname 7221327e-qa-svr.localdomain \
                   --network customnetwork \
@@ -64,7 +64,7 @@ pipeline {
                   qa-bkup-image
                 
                 
-                sudo docker exec 7221327e-qa-svr service apache2 start
+                docker exec 7221327e-qa-svr service apache2 start
                 '''
                 echo "Op-7221327e-S3: QA server rolled back successfully"
                 error('Pipeline aborted after rollback')
@@ -79,8 +79,8 @@ pipeline {
             steps {
                 script {
                     
-                    sh 'sudo docker rmi -f prod-bkup-image || true'
-                    sh 'sudo docker commit 7221327e-prod-svr prod-bkup-image'
+                    sh 'docker rmi -f prod-bkup-image || true'
+                    sh 'docker commit 7221327e-prod-svr prod-bkup-image'
                     
                     
                     sh '/opt/puppetlabs/bin/bolt script run ${WORKSPACE}/7221327e_script --targets docker://7221327e-prod-svr'
@@ -123,11 +123,11 @@ pipeline {
                     if (release == 'Rollback') {
                 sh '''
                 
-                sudo docker stop 7221327e-prod-svr || true
-                sudo docker rm 7221327e-prod-svr || true
+                docker stop 7221327e-prod-svr || true
+                docker rm 7221327e-prod-svr || true
 
                 
-                sudo docker run -d \
+                docker run -d \
                   --name 7221327e-prod-svr \
                   --hostname 7221327e-prod-svr.localdomain \
                   --network customnetwork \
@@ -136,7 +136,7 @@ pipeline {
                   prod-bkup-image
 
                 
-                sudo docker exec 7221327e-prod-svr service apache2 start
+                docker exec 7221327e-prod-svr service apache2 start
                 '''
                 echo "Op-7221327e-S6: Prod server rolled back successfully"
                 error('Pipeline aborted after production rollback')
