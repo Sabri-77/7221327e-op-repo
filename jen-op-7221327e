@@ -1,45 +1,165 @@
-
 pipeline {
     agent any
+    
     stages {
-        stage('Stage 1 - Checkout') {
+        stage('Op-7221327e-S1') {
             steps {
-                deleteDir()
-                git credentialsId: 'Sabri-77', url: 'https://github.com/Sabri-77/722132e-op-repo.git'
+                script {
+                    
+                    sh 'sudo docker rmi -f qa-bkup-image || true'
+                    sh 'sudo docker commit 7221327e-qa-svr qa-bkup-image'
+                    
+                    
+                    sh '/opt/puppetlabs/bin/bolt script run ${WORKSPACE}/7221327e_script --targets docker://7221327e-qa-svr'
+                    
+                    echo "Op-S1-7221327e: QA web server is backed up and updated"
+                }
             }
         }
-        stage('Stage 2 - Web Test QA (Before)') {
+        
+        stage('Op-7221327e-S2') {
             steps {
-                sh 'curl -Is http://localhost:33200 | head -n 1 > /tmp/qa-result-before'
-                sh 'cat /tmp/qa-result-before'
+                script {
+                    
+                    sh 'curl -Is http://localhost:33200 | head -n 1 > /tmp/qa-result-file'
+                    def qaResult = readFile('/tmp/qa-result-file').trim()
+                    
+                    if(qaResult != "HTTP/1.1 200 OK") {
+                        error("QA server test failed")
+                    }
+                    echo "Op-7221327e-S2: QA server is running after update"
+                }
             }
         }
-        stage('Stage 3 - Deploy to QA') {
+        
+        stage('Op-7221327e-S3') {
             steps {
-                sh 'bolt script run 7221327e_script --targets 7221327e-qa-svr'
+                script {
+                    
+                    def proceed = input(
+                        id: 'proceed', 
+                        message: 'Proceed to Prod or Rollback QA?', 
+                        parameters: [
+                            choice(
+                                choices: ['Proceed', 'Rollback'],
+                                description: 'Choose action',
+                                name: 'ACTION'
+                            )
+                        ]
+                    )
+                    
+                    if(proceed == 'Rollback') {
+                sh '''
+                
+                sudo docker stop 7221327e-qa-svr || true
+                sudo docker rm 7221327e-qa-svr || true
+                
+                
+                sudo docker run -d \
+                  --name 7221327e-qa-svr \
+                  --hostname 7221327e-qa-svr.localdomain \
+                  --network customnetwork \
+                  --ip 192.168.100.110 \
+                  -p 33200:80 \
+                  qa-bkup-image
+                
+                
+                sudo docker exec 7221327e-qa-svr service apache2 start
+                '''
+                echo "Op-7221327e-S3: QA server rolled back successfully"
+                error('Pipeline aborted after rollback')
+            } else {
+                echo "Op-7221327e-S3: Proceeding to Prod deployment"
+                    }
+                }
             }
         }
-        stage('Stage 4 - Verify QA') {
+        
+        stage('Op-7221327e-S4') {
             steps {
-                sh 'curl -Is http://localhost:33200 | head -n 1 > /tmp/qa-result-after'
-                sh 'cat /tmp/qa-result-after'
+                script {
+                    
+                    sh 'sudo docker rmi -f prod-bkup-image || true'
+                    sh 'sudo docker commit 7221327e-prod-svr prod-bkup-image'
+                    
+                    
+                    sh '/opt/puppetlabs/bin/bolt script run ${WORKSPACE}/7221327e_script --targets docker://7221327e-prod-svr'
+                    echo "Op-7221327e-S4: Prod server is backed up and updated"
+                }
             }
         }
-        stage('Stage 5 - Deploy to PROD') {
+        
+        stage('Op-7221327e-S5') {
             steps {
-                sh 'bolt script run 7221327e_script --targets 7221327e-prod-svr'
+                script {
+                    
+                    sh 'curl -Is http://localhost:33500 | head -n 1 > /tmp/prod-result-file'
+                    def prodResult = readFile('/tmp/prod-result-file').trim()
+                    
+                    if(prodResult != "HTTP/1.1 200 OK") {
+                        error("Prod server test failed")
+                    }
+                    echo "Op-7221327e-S5: Prod server is running after update"
+                }
             }
         }
-        stage('Stage 6 - Verify PROD') {
+        
+        stage('Op-7221327e-S6') {
             steps {
-                sh 'curl -Is http://localhost:33500 | head -n 1 > /tmp/prod-result'
-                sh 'cat /tmp/prod-result'
+                script {
+                    
+                    def release = input(
+                        id: 'release', 
+                        message: 'Release to production or Rollback Prod?', 
+                        parameters: [
+                            choice(
+                                choices: ['Release', 'Rollback'],
+                                description: 'Choose action',
+                                name: 'ACTION'
+                            )
+                        ]
+                    )
+                    
+                    if (release == 'Rollback') {
+                sh '''
+                
+                sudo docker stop 7221327e-prod-svr || true
+                sudo docker rm 7221327e-prod-svr || true
+
+                
+                sudo docker run -d \
+                  --name 7221327e-prod-svr \
+                  --hostname 7221327e-prod-svr.localdomain \
+                  --network customnetwork \
+                  --ip 192.168.100.220 \
+                  -p 33500:80 \
+                  prod-bkup-image
+
+                
+                sudo docker exec 7221327e-prod-svr service apache2 start
+                '''
+                echo "Op-7221327e-S6: Prod server rolled back successfully"
+                error('Pipeline aborted after production rollback')
+            } else {
+                echo "Op-7221327e-S6: Prod release confirmed - deployment successful"
+                    }
+                }
             }
         }
-        stage('Stage 7 - Complete') {
+        
+        stage('Op-7221327e-S7') {
             steps {
-                echo 'Deployment Completed'
+                echo "Op-7221327e-S7: Prod web server is monitored and ready to serve"
             }
+        }
+    }
+    
+    post {
+        failure {
+            echo "Pipeline failed - check logs for details"
+        }
+        success {
+            echo "Pipeline completed successfully"
         }
     }
 }
