@@ -6,8 +6,8 @@ pipeline {
             steps {
                 script {
                     
-                    sh 'sudo docker rmi -f qa-bkup-image || true'
-                    sh 'sudo docker commit 7221327e-qa-svr qa-bkup-image'
+                    sh 'docker rmi -f qa-bkup-image || true'
+                    sh 'docker commit 7221327e-qa-svr qa-bkup-image'
                     
                     
                     sh '/opt/puppetlabs/bin/bolt script run ${WORKSPACE}/7221327e_script --targets docker://7221327e-qa-svr'
