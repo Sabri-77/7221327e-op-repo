@@ -2,7 +2,7 @@
 
 puppet resource package apache2 ensure=present
 puppet resource service apache2 ensure=running enable=true
-puppet resource file /operate/7221327e ensure=absent
+puppet resource file /operate/7221327e ensure=directory
 puppet resource file /operate/7221327e ensure=directory
 git clone https://github.com/Sabri-777/7221327e-op-repo.git /operate/7221327e
 puppet resource file /var/www/html/index.html ensure=file source=/operate/7221327e/index-op-7221327e.html
